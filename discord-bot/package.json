@@ -1,0 +1,29 @@
+{
+  "name": "caedral-discord-bot",
+  "version": "1.0.0",
+  "description": "Self-hosted Caedral Discord bot — tickets, AI assistant, platform registration",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "npm run build --prefix ../knowledge && tsc",
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts",
+    "deploy-commands": "tsx src/deploy-commands.ts",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "knowledge:ingest": "tsx scripts/ingest-knowledge.ts",
+    "test:ticket-assistant": "tsx scripts/test-ticket-assistant.ts"
+  },
+  "dependencies": {
+    "@caedral/knowledge": "file:../knowledge",
+    "discord.js": "^14.23.2",
+    "postgres": "^3.4.9",
+    "tsx": "^4.20.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "typescript": "^5"
+  }
+}

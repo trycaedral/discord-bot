@@ -1,0 +1,29 @@
+{
+  "name": "@caedral/knowledge",
+  "version": "1.0.0",
+  "description": "Caedral knowledge base RAG and chat assistant via the Caedral API",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test-retrieval": "tsx scripts/test-retrieval.ts",
+    "test:personality": "tsx scripts/test-personality.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "postgres": "^3.4.9"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "tsx": "^4.20.5",
+    "typescript": "^5",
+    "vitest": "^3.2.6"
+  }
+}
