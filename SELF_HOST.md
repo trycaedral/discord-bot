@@ -5,11 +5,11 @@ Production checklist for operators running the open-source bot outside the Caedr
 ## Quick start
 
 ```bash
-cp discord-bot/.env.example discord-bot/.env
+cp .env.example .env
 # Required: CAEDRAL_API_KEY, DISCORD_*, CAEDRAL_ASSISTANT_MODEL (optional)
 
-docker compose -f discord-bot/docker-compose.yml up -d --build
-docker compose -f discord-bot/docker-compose.yml logs -f discord-bot
+docker compose up -d --build
+docker compose logs -f discord-bot
 ```
 
 Documentation: [caedral.com/docs/discord-bot](https://caedral.com/docs/discord-bot)
@@ -30,10 +30,10 @@ On first start (empty `knowledge_chunks` table), the bot automatically ingests t
 Re-ingest manually:
 
 ```bash
-docker compose -f discord-bot/docker-compose.yml exec discord-bot npm run knowledge:ingest
+docker compose exec discord-bot npm run knowledge:ingest
 ```
 
-Or locally: `cd discord-bot && npm run knowledge:ingest`
+Or locally: `npm run knowledge:ingest`
 
 Set `KNOWLEDGE_AUTO_INGEST=0` to skip auto-ingest on boot.
 

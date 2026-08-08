@@ -1,11 +1,8 @@
-# Standalone Docker Compose for self-hosted Caedral Discord Bot
+# Standalone Docker Compose (repo root = this directory)
 #
-# From repo root:
-#   cp discord-bot/.env.example discord-bot/.env
-#   # edit discord-bot/.env
-#   docker compose -f discord-bot/docker-compose.yml up -d --build
+#   cp .env.example .env
+#   docker compose up -d --build
 #
-# Requires build context at monorepo root (includes knowledge/ package).
 # Docs: https://caedral.com/docs/discord-bot
 
 services:
@@ -31,8 +28,8 @@ services:
 
   discord-bot:
     build:
-      context: ..
-      dockerfile: discord-bot/Dockerfile
+      context: .
+      dockerfile: Dockerfile
     restart: unless-stopped
     env_file: .env
     environment:

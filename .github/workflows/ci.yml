@@ -18,7 +18,7 @@ jobs:
           cache: npm
           cache-dependency-path: |
             knowledge/package-lock.json
-            discord-bot/package-lock.json
+            package-lock.json
 
       - name: Install and build knowledge
         working-directory: knowledge
@@ -27,7 +27,6 @@ jobs:
           npm run build
 
       - name: Install and build discord-bot
-        working-directory: discord-bot
         run: |
           npm ci
           npm run build

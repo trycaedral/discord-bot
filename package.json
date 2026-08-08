@@ -8,7 +8,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "npm run build --prefix ../knowledge && tsc",
+    "build": "npm run build --prefix ./knowledge && tsc",
     "start": "tsx src/index.ts",
     "dev": "tsx watch src/index.ts",
     "deploy-commands": "tsx src/deploy-commands.ts",
@@ -17,7 +17,7 @@
     "test:ticket-assistant": "tsx scripts/test-ticket-assistant.ts"
   },
   "dependencies": {
-    "@caedral/knowledge": "file:../knowledge",
+    "@caedral/knowledge": "file:./knowledge",
     "discord.js": "^14.23.2",
     "postgres": "^3.4.9",
     "tsx": "^4.20.5"

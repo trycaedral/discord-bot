@@ -1,17 +1,5 @@
-# Dependencies
 node_modules/
 dist/
-
-# Environment and secrets
 .env
-.env.*
-!.env.example
-
-# IDE and OS
-.idea/
-.vscode/
 *.log
-.DS_Store
-
-# Build artifacts
-*.tsbuildinfo
+.idea/

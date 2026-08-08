@@ -1,5 +1,5 @@
 /**
- * Load discord-bot/.env for local scripts (standalone repo or monorepo subfolder).
+ * Load .env for local scripts (standalone repo or monorepo subfolder).
  */
 const { existsSync, readFileSync } = require("node:fs");
 const { resolve } = require("node:path");
