@@ -120,6 +120,8 @@ export const env = {
   supportChannelId: required("DISCORD_SUPPORT_CHANNEL_ID"),
   ticketCategoryId: required("DISCORD_TICKET_CATEGORY_ID"),
   ticketLogChannelId: required("DISCORD_TICKET_LOG_CHANNEL_ID"),
+  /** Optional dedicated changelog log channel; falls back to ticket log channel */
+  changelogLogChannelId: optional("DISCORD_CHANGELOG_LOG_CHANNEL_ID"),
   /** Bot-local Postgres (tickets only). Not the Caedral platform database. */
   databaseUrl: required("DATABASE_URL"),
   siteUrl: optional("NEXT_PUBLIC_SITE_URL", "https://caedral.com"),

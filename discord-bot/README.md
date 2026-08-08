@@ -34,11 +34,18 @@ After the first heartbeat, your instance appears linked to your API key owner ac
 
 For local development without platform registration, set `CAEDRAL_BOT_ALLOW_UNREGISTERED=1`.
 
-## Monorepo / internal Caedral deployment
+## Changelog delivery
 
-When running inside the Caedral monorepo, use the root `.env` and `docker compose` at repo root. Internal bots use `CAEDRAL_BOT_INSTANCE_ID` (UUID) instead of an API key for unlimited gateway access.
+When Caedral publishes on [caedral.com/changelog](https://caedral.com/changelog), a broadcast is queued for every registered bot. On the next heartbeat (~60s), your bot posts to:
 
-Copy `.env.example.local` or `.env.example.production` values into the repo root `.env`.
+- `DISCORD_UPDATES_CHANNEL_ID` — product updates channel
+- `DISCORD_CHANGELOG_LOG_CHANNEL_ID` (optional) or `DISCORD_TICKET_LOG_CHANNEL_ID` — log/archive channel
+
+No inbound connection from Caedral to your VPS is required.
+
+## Monorepo note
+
+The Caedral **platform** monorepo (`trycaedral/platform` or local `Caedral/`) no longer includes this bot. Use this repository or [github.com/trycaedral/discord-bot](https://github.com/trycaedral/discord-bot) for bot development and deployment.
 
 ## Discord Developer Portal setup
 
@@ -208,15 +215,8 @@ User lookups (`/user-lookup`) require the Caedral platform database and are disa
 
 ## Site integration (admin changelog)
 
-When an admin publishes from `/admin/changelog`, the **site calls the bot** over a small internal HTTP API (not polling). This gives immediate Discord delivery while keeping the database as the single source of truth on the site side.
+When an admin publishes from `/admin/changelog` on caedral.com, a **broadcast** is written to the platform database. Every registered bot receives pending entries on its next heartbeat and posts to `#updates` and the configured log channel.
 
-| Variable | Service | Purpose |
-|----------|---------|---------|
-| `DISCORD_BOT_INTERNAL_PORT` | Bot | HTTP listen port (default `5010`) |
-| `DISCORD_BOT_INTERNAL_HOST` | Bot | Bind address (default `127.0.0.1`) |
-| `DISCORD_BOT_INTERNAL_SECRET` | Bot + Site | Shared Bearer token |
-| `DISCORD_BOT_INTERNAL_URL` | Site | e.g. `http://127.0.0.1:5010` |
+Self-hosted bots do **not** expose a public HTTP endpoint to Caedral. Delivery is pull-based via `POST /v1/bot-instances/heartbeat`.
 
-**Flow:** Admin publish → row in `changelog_entries` → `revalidatePath('/changelog')` → `POST /internal/changelog` on the bot → branded post in `#updates`.
-
-Set the **same** `DISCORD_BOT_INTERNAL_SECRET` in the repo root `.env` for both services. The bot must be running for Discord posts to succeed; the public `/changelog` page updates regardless.
+Optional: `POST /internal/changelog` on the bot's local HTTP server (requires `DISCORD_BOT_INTERNAL_SECRET`) for manual testing only.

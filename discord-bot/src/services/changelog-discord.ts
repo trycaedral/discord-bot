@@ -24,13 +24,23 @@ export async function postChangelogToDiscord(
   client: Client,
   entry: ChangelogDiscordPayload,
 ): Promise<{ ok: boolean; error?: string }> {
-  try {
-    const channel = await client.channels.fetch(env.updatesChannelId);
-    if (!channel?.isSendable()) {
-      return { ok: false, error: "Updates channel is not sendable." };
-    }
+  const container = buildChangelogContainer(entry);
+  const channelIds = [
+    env.updatesChannelId,
+    env.changelogLogChannelId || env.ticketLogChannelId,
+  ].filter((id, index, arr) => id && arr.indexOf(id) === index);
 
-    await sendBranded(channel, buildChangelogContainer(entry));
+  try {
+    for (const channelId of channelIds) {
+      const channel = await client.channels.fetch(channelId);
+      if (!channel?.isSendable()) {
+        return {
+          ok: false,
+          error: `Channel ${channelId} is not sendable.`,
+        };
+      }
+      await sendBranded(channel, container);
+    }
     return { ok: true };
   } catch (err) {
     return {

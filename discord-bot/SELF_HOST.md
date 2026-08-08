@@ -37,6 +37,10 @@ Or locally: `cd discord-bot && npm run knowledge:ingest`
 
 Set `KNOWLEDGE_AUTO_INGEST=0` to skip auto-ingest on boot.
 
+## Changelog delivery
+
+Registered bots receive Caedral site changelog broadcasts on heartbeat and post to your `#updates` and log channels automatically. Configure `DISCORD_UPDATES_CHANNEL_ID` and optionally `DISCORD_CHANGELOG_LOG_CHANNEL_ID`.
+
 ## Required secrets
 
 - `CAEDRAL_API_KEY` — from dashboard; bills embed, rerank, and chat
@@ -84,13 +88,13 @@ After pulling latest Caedral site code, apply:
 cd site && npm run db:migrate
 ```
 
-Migration `0020_bot_instance_reported_meta.sql` adds version/hostname columns shown in the dashboard.
+Migration `0022_bot_changelog_broadcasts.sql` adds changelog fan-out tables for Discord bots.
 
 ## Publishing
 
 This repository is the **standalone open-source distribution** of the Caedral Discord bot (MIT). It includes the `@caedral/knowledge` package in `knowledge/` for ticket RAG.
 
-Docker builds require this layout (`discord-bot/` + `knowledge/` at the repo root). See [SELF_HOST.md](./discord-bot/SELF_HOST.md) for production operations.
+Docker builds require this layout (`discord-bot/` + `knowledge/` at the repo root). See [SELF_HOST.md](./SELF_HOST.md) for production operations.
 
 ## Troubleshooting
 

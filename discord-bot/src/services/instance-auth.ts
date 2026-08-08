@@ -1,6 +1,10 @@
 import { hostname } from "node:os";
 import type { Client } from "discord.js";
 import { env } from "../config/env.js";
+import {
+  deliverPendingChangelogs,
+  type PendingChangelogBroadcast,
+} from "./changelog-broadcast.js";
 
 const HEARTBEAT_INTERVAL_MS = 60_000;
 const AUTH_CACHE_TTL_MS = 3 * 60_000;
@@ -148,6 +152,7 @@ async function sendHeartbeat(client: Client): Promise<void> {
       status: string;
       systemPrompt?: string | null;
       assistantModel?: string | null;
+      pendingChangelogs?: PendingChangelogBroadcast[];
     };
     if (data.status !== "active") {
       console.error(
@@ -162,6 +167,9 @@ async function sendHeartbeat(client: Client): Promise<void> {
       }
       if (data.assistantModel !== undefined) {
         cachedAssistantModel = data.assistantModel;
+      }
+      if (data.pendingChangelogs?.length) {
+        void deliverPendingChangelogs(client, data.pendingChangelogs);
       }
     }
   } catch (error) {
