@@ -12,6 +12,7 @@ RUN npm install && npm run build
 
 WORKDIR /app/bot
 COPY package.json package-lock.json* ./
+RUN ln -s /app/knowledge ./knowledge
 RUN npm install
 
 COPY tsconfig.json ./
@@ -39,6 +40,8 @@ COPY --from=builder --chown=appuser:appgroup /app/bot/package.json /app/bot/
 COPY --chown=appuser:appgroup migrations /app/bot/migrations
 COPY --chown=appuser:appgroup assets /app/bot/assets
 COPY --chown=appuser:appgroup docker-entrypoint.sh /app/bot/docker-entrypoint.sh
+
+RUN ln -sf /app/knowledge /app/bot/knowledge
 
 WORKDIR /app/bot
 

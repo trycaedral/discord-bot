@@ -12,6 +12,7 @@ RUN npm install && npm run build
 
 WORKDIR /app/discord-bot
 COPY discord-bot/package.json discord-bot/package-lock.json* ./
+RUN ln -s /app/knowledge ./knowledge
 RUN npm install
 
 COPY discord-bot/tsconfig.json ./
@@ -39,6 +40,8 @@ COPY --from=builder --chown=appuser:appgroup /app/discord-bot/package.json /app/
 COPY --chown=appuser:appgroup discord-bot/migrations /app/discord-bot/migrations
 COPY --chown=appuser:appgroup discord-bot/assets /app/discord-bot/assets
 COPY --chown=appuser:appgroup discord-bot/docker-entrypoint.sh /app/discord-bot/docker-entrypoint.sh
+
+RUN ln -sf /app/knowledge /app/discord-bot/knowledge
 
 WORKDIR /app/discord-bot
 
