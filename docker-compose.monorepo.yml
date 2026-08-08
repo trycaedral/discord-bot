@@ -1,0 +1,58 @@
+# Monorepo Docker Compose — run from Caedral root:
+#   cp discord-bot/.env.example discord-bot/.env
+#   docker compose -f discord-bot/docker-compose.monorepo.yml up -d --build
+#
+# Build context is the Caedral root (parent of discord-bot/ and knowledge/).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-caedral_bot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-caedral_bot}
+      POSTGRES_DB: ${POSTGRES_DB:-caedral_bot}
+    volumes:
+      - bot_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-caedral_bot} -d ${POSTGRES_DB:-caedral_bot}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  discord-bot:
+    build:
+      context: ..
+      dockerfile: discord-bot/Dockerfile.monorepo
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-caedral_bot}:${POSTGRES_PASSWORD:-caedral_bot}@postgres:5432/${POSTGRES_DB:-caedral_bot}
+      DISCORD_BOT_INTERNAL_HOST: 0.0.0.0
+      DISCORD_BOT_INTERNAL_PORT: "5010"
+    ports:
+      - "127.0.0.1:5010:5010"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--spider",
+          "-q",
+          "http://127.0.0.1:5010/health",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
+
+volumes:
+  bot_pgdata:
