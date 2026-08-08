@@ -11,6 +11,7 @@ Self-hosted [Caedral](https://caedral.com) Discord bot: support tickets with AI 
 - Heartbeat registration every 60s with your Caedral API key
 - Remote control: enable/disable, rename, chat model, system prompt via [Dashboard → Discord Bots](https://caedral.com/dashboard/bots)
 - Bundled Postgres for tickets and knowledge chunks (Docker Compose)
+- **Changelog fan-out** — site publishes queue broadcasts; bots deliver to `#updates` + log channel on heartbeat
 
 ## Quick start
 
