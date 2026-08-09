@@ -1,6 +1,7 @@
 import {
   ChannelType,
   Client,
+  ComponentType,
   Guild,
   GuildMember,
   Message,
@@ -230,6 +231,52 @@ async function fetchAllMessages(
   return all.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
 }
 
+type RawComponent = {
+  type: number;
+  content?: string;
+  components?: RawComponent[];
+  media?: { url: string };
+  items?: { media: { url: string } }[];
+};
+
+/**
+ * Extracts plain text and media URLs from a Components V2 message, since
+ * `msg.content` comes back empty when a message is built with components.
+ */
+function extractFromComponents(
+  components: Message["components"],
+): { text: string; mediaUrls: string[] } {
+  const textParts: string[] = [];
+  const mediaUrls: string[] = [];
+
+  function walk(raw: RawComponent) {
+    switch (raw.type) {
+      case ComponentType.TextDisplay:
+        if (raw.content) textParts.push(raw.content);
+        break;
+      case ComponentType.Thumbnail:
+        if (raw.media?.url) mediaUrls.push(raw.media.url);
+        break;
+      case ComponentType.MediaGallery:
+        for (const item of raw.items ?? []) {
+          if (item.media?.url) mediaUrls.push(item.media.url);
+        }
+        break;
+      default:
+        // Section, Container, ActionRow, etc. — walk their children.
+        for (const child of raw.components ?? []) {
+          walk(child);
+        }
+    }
+  }
+
+  for (const component of components) {
+    walk(component.toJSON() as RawComponent);
+  }
+
+  return { text: textParts.join("\n"), mediaUrls };
+}
+
 async function buildTranscript(
   channel: GuildTextBasedChannel,
 ): Promise<{ text: string; entries: TranscriptMessage[] }> {
@@ -245,13 +292,23 @@ async function buildTranscript(
 
   for (const msg of messages) {
     const attachmentUrls = [...msg.attachments.values()].map((a) => a.url);
+
+    // Components V2 messages have empty `content` — the real text lives
+    // inside `msg.components`, so we extract it as a fallback.
+    let content = msg.content;
+    if (!content && msg.components.length > 0) {
+      const extracted = extractFromComponents(msg.components);
+      content = extracted.text;
+      attachmentUrls.push(...extracted.mediaUrls);
+    }
+
     const attachmentsSuffix =
       attachmentUrls.length > 0
         ? ` [attachments: ${attachmentUrls.join(", ")}]`
         : "";
 
     lines.push(
-      `[${msg.createdAt.toISOString()}] ${msg.author.tag}: ${msg.content || "(components only)"}${attachmentsSuffix}`,
+      `[${msg.createdAt.toISOString()}] ${msg.author.tag}: ${content || "(no content)"}${attachmentsSuffix}`,
     );
 
     entries.push({
@@ -260,7 +317,7 @@ async function buildTranscript(
       authorTag: msg.author.tag,
       authorDisplayName: msg.member?.displayName ?? msg.author.displayName ?? msg.author.username,
       authorAvatarUrl: msg.author.displayAvatarURL({ size: 64 }),
-      content: msg.content,
+      content,
       createdAt: msg.createdAt.toISOString(),
       attachments: attachmentUrls,
       isBot: msg.author.bot,

@@ -91,7 +91,7 @@ export async function validateBotInstance(): Promise<boolean> {
       lastAuthCheck = Date.now();
       cachedSystemPrompt = data.systemPrompt;
       cachedAssistantModel = data.assistantModel ?? null;
-      cachedInstanceId = data.instanceId ?? cachedInstanceId
+      cachedInstanceId = data.instanceId ?? cachedInstanceId;
       console.log(
         `[instance-auth] Validated (${env.authMode()}): ${data.instanceName}`,
       );
@@ -158,7 +158,7 @@ async function sendHeartbeat(client: Client): Promise<void> {
       status: string;
       systemPrompt?: string | null;
       assistantModel?: string | null;
-      instanceId: string;
+      instanceId?: string;
       pendingChangelogs?: PendingChangelogBroadcast[];
     };
     if (data.status !== "active") {
@@ -176,7 +176,7 @@ async function sendHeartbeat(client: Client): Promise<void> {
         cachedAssistantModel = data.assistantModel;
       }
       if (data.instanceId) {
-        cachedInstanceId = data.instanceId
+        cachedInstanceId = data.instanceId;
       }
       if (data.pendingChangelogs?.length) {
         void deliverPendingChangelogs(client, data.pendingChangelogs);

@@ -29,6 +29,11 @@ function instanceAuthHeaders(): Record<string, string> {
   };
 }
 
+/**
+ * Sends the full ticket transcript to the Caedral API so it can be hosted
+ * publicly. Returns the public log URL, or null if it could not be sent
+ * (missing instanceId, network error, or a non-2xx response).
+ */
 export async function submitTicketTranscript(
   ticketId: string,
   transcript: TranscriptMessage[],

@@ -125,7 +125,6 @@ export const env = {
   /** Bot-local Postgres (tickets only). Not the Caedral platform database. */
   databaseUrl: required("DATABASE_URL"),
   siteUrl: optional("NEXT_PUBLIC_SITE_URL", "https://caedral.com"),
-  /** Public base URL for this bot instance's own HTTP server (ticket log pages, etc). Optional — self-hosters who don't expose the bot publicly can leave it unset. */
   /** Caedral API gateway — hardcoded for self-hosted; override only for internal/dev. */
   gatewayUrl: resolvePlatformGatewayUrl(),
   changelogApiUrl: optional(
