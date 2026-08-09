@@ -42,6 +42,7 @@ import {
   TICKET_OPEN_BUTTON,
   type TicketCategoryKey,
 } from "./constants.js";
+import { submitTicketTranscript } from "../services/ticket-transcripts.js";
 
 const TICKET_CATEGORY_DESCRIPTIONS: Record<TicketCategoryKey, string> = {
   bug_report: "Report an API error, outage, or unexpected behavior.",
@@ -284,8 +285,11 @@ export async function closeTicket(
 
   await closeTicketRecord(ticket.id, fullTranscript, entries);
 
-  const logUrl = env.publicUrl ? `${env.publicUrl}/tickets/${ticket.id}` : null;
-
+    const logUrl = await submitTicketTranscript(ticket.id, entries, {
+    category: ticket.category,
+    openerDiscordId: ticket.openerDiscordId,
+    closedAt: new Date().toISOString(),
+  });
   const logChannel = await client.channels.fetch(env.ticketLogChannelId);
   if (logChannel?.isSendable()) {
     const logContainer = buildBrandedMessage(

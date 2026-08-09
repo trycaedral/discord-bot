@@ -1,12 +1,10 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { Client } from "discord.js";
 import { env } from "../config/env.js";
-import { getTicketTranscript } from "../db/client.js";
 import {
   postChangelogToDiscord,
   type ChangelogDiscordPayload,
 } from "../services/changelog-discord.js";
-import { renderTicketLogPage } from "./ticket-log-page.js";
 
 async function readJsonBody(req: IncomingMessage): Promise<unknown> {
   const chunks: Buffer[] = [];
@@ -20,11 +18,6 @@ async function readJsonBody(req: IncomingMessage): Promise<unknown> {
 function sendJson(res: ServerResponse, status: number, body: unknown) {
   res.writeHead(status, { "Content-Type": "application/json" });
   res.end(JSON.stringify(body));
-}
-
-function sendHtml(res: ServerResponse, status: number, html: string) {
-  res.writeHead(status, { "Content-Type": "text/html; charset=utf-8" });
-  res.end(html);
 }
 
 function isAuthorized(req: IncomingMessage): boolean {
@@ -86,27 +79,6 @@ export function startInternalServer(client: Client) {
         sendJson(res, 200, { ok: true });
         return;
       }
-
-      if (req.method === "GET" && req.url?.startsWith("/tickets/")) {
-        const ticketId = decodeURIComponent(
-          req.url.slice("/tickets/".length).split("?")[0].replace(/\/$/, ""),
-        );
-
-        if (!ticketId) {
-          sendHtml(res, 404, "<h1>Not found</h1>");
-          return;
-        }
-
-        const ticket = await getTicketTranscript(ticketId);
-        if (!ticket) {
-          sendHtml(res, 404, "<h1>Ticket not found</h1>");
-          return;
-        }
-
-        sendHtml(res, 200, renderTicketLogPage(ticket));
-        return;
-      }
-
       sendJson(res, 404, { error: "Not found" });
     } catch (err) {
       console.error("Internal server error:", err);
