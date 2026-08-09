@@ -3,6 +3,7 @@ import {
   Client,
   Guild,
   GuildMember,
+  Message,
   MessageFlags,
   PermissionFlagsBits,
   StringSelectMenuBuilder,
@@ -17,6 +18,7 @@ import {
   buildBrandedMessage,
   brandedMessagePayload,
   dangerButton,
+  linkButton,
   secondaryButton,
   sendBranded,
   textBlock,
@@ -25,7 +27,12 @@ import {
   separator,
 } from "../branding/ui.js";
 import { env } from "../config/env.js";
-import { closeTicketRecord, createTicketRecord, getTicketByChannel } from "../db/client.js";
+import {
+  closeTicketRecord,
+  createTicketRecord,
+  getTicketByChannel,
+  type TranscriptMessage,
+} from "../db/client.js";
 import { sendInitialTicketAssistantReply } from "../services/ticket-assistant.js";
 import { canManageTickets } from "../utils/permissions.js";
 import {
@@ -201,13 +208,11 @@ export async function createTicketChannel(
   return channel;
 }
 
-async function buildTranscript(channel: GuildTextBasedChannel): Promise<string> {
-  const lines: string[] = [
-    `# Transcript — #${channel.name}`,
-    `Channel ID: ${channel.id}`,
-    `Created: ${channel.createdAt?.toISOString() ?? "unknown"}`,
-    "",
-  ];
+/** Fetches every message in the channel, oldest first, paginating past Discord's 100-per-call limit. */
+async function fetchAllMessages(
+  channel: GuildTextBasedChannel,
+): Promise<Message[]> {
+  const all: Message[] = [];
 
   let lastId: string | undefined;
   for (;;) {
@@ -216,23 +221,52 @@ async function buildTranscript(channel: GuildTextBasedChannel): Promise<string> 
       ...(lastId ? { before: lastId } : {}),
     });
     if (batch.size === 0) break;
-    const sorted = [...batch.values()].sort(
-      (a, b) => a.createdTimestamp - b.createdTimestamp,
-    );
-    for (const msg of sorted) {
-      const attachments =
-        msg.attachments.size > 0
-          ? ` [attachments: ${[...msg.attachments.values()].map((a) => a.url).join(", ")}]`
-          : "";
-      lines.push(
-        `[${msg.createdAt.toISOString()}] ${msg.author.tag}: ${msg.content || "(components only)"}${attachments}`,
-      );
-    }
+    all.push(...batch.values());
     lastId = batch.last()?.id;
     if (batch.size < 100) break;
   }
 
-  return lines.join("\n");
+  return all.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
+}
+
+async function buildTranscript(
+  channel: GuildTextBasedChannel,
+): Promise<{ text: string; entries: TranscriptMessage[] }> {
+  const lines: string[] = [
+    `# Transcript — #${channel.name}`,
+    `Channel ID: ${channel.id}`,
+    `Created: ${channel.createdAt?.toISOString() ?? "unknown"}`,
+    "",
+  ];
+
+  const messages = await fetchAllMessages(channel);
+  const entries: TranscriptMessage[] = [];
+
+  for (const msg of messages) {
+    const attachmentUrls = [...msg.attachments.values()].map((a) => a.url);
+    const attachmentsSuffix =
+      attachmentUrls.length > 0
+        ? ` [attachments: ${attachmentUrls.join(", ")}]`
+        : "";
+
+    lines.push(
+      `[${msg.createdAt.toISOString()}] ${msg.author.tag}: ${msg.content || "(components only)"}${attachmentsSuffix}`,
+    );
+
+    entries.push({
+      id: msg.id,
+      authorId: msg.author.id,
+      authorTag: msg.author.tag,
+      authorDisplayName: msg.member?.displayName ?? msg.author.displayName ?? msg.author.username,
+      authorAvatarUrl: msg.author.displayAvatarURL({ size: 64 }),
+      content: msg.content,
+      createdAt: msg.createdAt.toISOString(),
+      attachments: attachmentUrls,
+      isBot: msg.author.bot,
+    });
+  }
+
+  return { text: lines.join("\n"), entries };
 }
 
 export async function closeTicket(
@@ -245,10 +279,12 @@ export async function closeTicket(
     throw new Error("Ticket not found or already closed.");
   }
 
-  const transcript = await buildTranscript(channel);
+  const { text: transcript, entries } = await buildTranscript(channel);
   const fullTranscript = `${transcript}\n\n---\nClosed by ${closedByTag} at ${new Date().toISOString()}`;
 
-  await closeTicketRecord(ticket.id, fullTranscript);
+  await closeTicketRecord(ticket.id, fullTranscript, entries);
+
+  const logUrl = env.publicUrl ? `${env.publicUrl}/tickets/${ticket.id}` : null;
 
   const logChannel = await client.channels.fetch(env.ticketLogChannelId);
   if (logChannel?.isSendable()) {
@@ -270,7 +306,37 @@ export async function closeTicket(
         ),
       );
 
+    if (logUrl) {
+      logContainer.addActionRowComponents((row) =>
+        row.setComponents(linkButton("View full transcript", logUrl)),
+      );
+    }
+
     await sendBranded(logChannel, logContainer);
+  }
+
+  if (logUrl) {
+    try {
+      const opener = await client.users.fetch(ticket.openerDiscordId);
+      const dmContainer = buildBrandedMessage(
+        BRAND_SAND,
+        [
+          "## Your ticket was closed",
+          "",
+          `**Category** · ${ticket.category}`,
+          `Here's the full transcript of your conversation.`,
+        ].join("\n"),
+      ).addActionRowComponents((row) =>
+        row.setComponents(linkButton("View transcript", logUrl)),
+      );
+
+      await opener.send(brandedMessagePayload(dmContainer));
+    } catch (err) {
+      console.warn(
+        `Could not DM ticket opener ${ticket.openerDiscordId} about closed ticket ${ticket.id}:`,
+        err,
+      );
+    }
   }
 
   await channel.delete(`Ticket closed by ${closedByTag}`);
