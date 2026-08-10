@@ -79,7 +79,6 @@ export function startInternalServer(client: Client) {
         sendJson(res, 200, { ok: true });
         return;
       }
-
       sendJson(res, 404, { error: "Not found" });
     } catch (err) {
       console.error("Internal server error:", err);

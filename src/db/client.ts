@@ -159,13 +159,60 @@ export async function getAssistantHistory(
   }));
 }
 
+export type TranscriptMessage = {
+  id: string;
+  authorId: string;
+  authorTag: string;
+  authorDisplayName: string;
+  authorAvatarUrl: string | null;
+  content: string;
+  createdAt: string;
+  attachments: string[];
+  isBot: boolean;
+};
+
+export type TicketTranscriptRow = {
+  id: string;
+  category: string;
+  openerDiscordId: string;
+  status: string;
+  createdAt: Date;
+  closedAt: Date | null;
+  transcriptJson: TranscriptMessage[] | null;
+};
+
+/** Public-facing lookup for the ticket log HTML page — only the fields safe to render. */
+export async function getTicketTranscript(
+  ticketId: string,
+): Promise<TicketTranscriptRow | null> {
+  const rows = await sql<TicketTranscriptRow[]>`
+    SELECT
+      id,
+      category,
+      opener_discord_id AS "openerDiscordId",
+      status,
+      created_at AS "createdAt",
+      closed_at AS "closedAt",
+      transcript_json AS "transcriptJson"
+    FROM discord_tickets
+    WHERE id = ${ticketId}
+    LIMIT 1
+  `;
+  return rows[0] ?? null;
+}
+
 export async function closeTicketRecord(
   ticketId: string,
   transcript: string,
+  transcriptJson: TranscriptMessage[],
 ): Promise<void> {
   await sql`
     UPDATE discord_tickets
-    SET status = 'closed', closed_at = NOW(), transcript = ${transcript}
+    SET
+      status = 'closed',
+      closed_at = NOW(),
+      transcript = ${transcript},
+      transcript_json = ${sql.json(transcriptJson)}
     WHERE id = ${ticketId}
   `;
 }

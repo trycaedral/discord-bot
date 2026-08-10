@@ -1,8 +1,10 @@
 import {
   ChannelType,
   Client,
+  ComponentType,
   Guild,
   GuildMember,
+  Message,
   MessageFlags,
   PermissionFlagsBits,
   StringSelectMenuBuilder,
@@ -17,6 +19,7 @@ import {
   buildBrandedMessage,
   brandedMessagePayload,
   dangerButton,
+  linkButton,
   secondaryButton,
   sendBranded,
   textBlock,
@@ -25,7 +28,12 @@ import {
   separator,
 } from "../branding/ui.js";
 import { env } from "../config/env.js";
-import { closeTicketRecord, createTicketRecord, getTicketByChannel } from "../db/client.js";
+import {
+  closeTicketRecord,
+  createTicketRecord,
+  getTicketByChannel,
+  type TranscriptMessage,
+} from "../db/client.js";
 import { sendInitialTicketAssistantReply } from "../services/ticket-assistant.js";
 import { canManageTickets } from "../utils/permissions.js";
 import {
@@ -35,6 +43,7 @@ import {
   TICKET_OPEN_BUTTON,
   type TicketCategoryKey,
 } from "./constants.js";
+import { submitTicketTranscript } from "../services/ticket-transcripts.js";
 
 const TICKET_CATEGORY_DESCRIPTIONS: Record<TicketCategoryKey, string> = {
   bug_report: "Report an API error, outage, or unexpected behavior.",
@@ -201,13 +210,11 @@ export async function createTicketChannel(
   return channel;
 }
 
-async function buildTranscript(channel: GuildTextBasedChannel): Promise<string> {
-  const lines: string[] = [
-    `# Transcript — #${channel.name}`,
-    `Channel ID: ${channel.id}`,
-    `Created: ${channel.createdAt?.toISOString() ?? "unknown"}`,
-    "",
-  ];
+/** Fetches every message in the channel, oldest first, paginating past Discord's 100-per-call limit. */
+async function fetchAllMessages(
+  channel: GuildTextBasedChannel,
+): Promise<Message[]> {
+  const all: Message[] = [];
 
   let lastId: string | undefined;
   for (;;) {
@@ -216,23 +223,108 @@ async function buildTranscript(channel: GuildTextBasedChannel): Promise<string> 
       ...(lastId ? { before: lastId } : {}),
     });
     if (batch.size === 0) break;
-    const sorted = [...batch.values()].sort(
-      (a, b) => a.createdTimestamp - b.createdTimestamp,
-    );
-    for (const msg of sorted) {
-      const attachments =
-        msg.attachments.size > 0
-          ? ` [attachments: ${[...msg.attachments.values()].map((a) => a.url).join(", ")}]`
-          : "";
-      lines.push(
-        `[${msg.createdAt.toISOString()}] ${msg.author.tag}: ${msg.content || "(components only)"}${attachments}`,
-      );
-    }
+    all.push(...batch.values());
     lastId = batch.last()?.id;
     if (batch.size < 100) break;
   }
 
-  return lines.join("\n");
+  return all.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
+}
+
+type RawComponent = {
+  type: number;
+  content?: string;
+  components?: RawComponent[];
+  media?: { url: string };
+  items?: { media: { url: string } }[];
+};
+
+/**
+ * Extracts plain text and media URLs from a Components V2 message, since
+ * `msg.content` comes back empty when a message is built with components.
+ */
+function extractFromComponents(
+  components: Message["components"],
+): { text: string; mediaUrls: string[] } {
+  const textParts: string[] = [];
+  const mediaUrls: string[] = [];
+
+  function walk(raw: RawComponent) {
+    switch (raw.type) {
+      case ComponentType.TextDisplay:
+        if (raw.content) textParts.push(raw.content);
+        break;
+      case ComponentType.Thumbnail:
+        if (raw.media?.url) mediaUrls.push(raw.media.url);
+        break;
+      case ComponentType.MediaGallery:
+        for (const item of raw.items ?? []) {
+          if (item.media?.url) mediaUrls.push(item.media.url);
+        }
+        break;
+      default:
+        // Section, Container, ActionRow, etc. — walk their children.
+        for (const child of raw.components ?? []) {
+          walk(child);
+        }
+    }
+  }
+
+  for (const component of components) {
+    walk(component.toJSON() as RawComponent);
+  }
+
+  return { text: textParts.join("\n"), mediaUrls };
+}
+
+async function buildTranscript(
+  channel: GuildTextBasedChannel,
+): Promise<{ text: string; entries: TranscriptMessage[] }> {
+  const lines: string[] = [
+    `# Transcript — #${channel.name}`,
+    `Channel ID: ${channel.id}`,
+    `Created: ${channel.createdAt?.toISOString() ?? "unknown"}`,
+    "",
+  ];
+
+  const messages = await fetchAllMessages(channel);
+  const entries: TranscriptMessage[] = [];
+
+  for (const msg of messages) {
+    const attachmentUrls = [...msg.attachments.values()].map((a) => a.url);
+
+    // Components V2 messages have empty `content` — the real text lives
+    // inside `msg.components`, so we extract it as a fallback.
+    let content = msg.content;
+    if (!content && msg.components.length > 0) {
+      const extracted = extractFromComponents(msg.components);
+      content = extracted.text;
+      attachmentUrls.push(...extracted.mediaUrls);
+    }
+
+    const attachmentsSuffix =
+      attachmentUrls.length > 0
+        ? ` [attachments: ${attachmentUrls.join(", ")}]`
+        : "";
+
+    lines.push(
+      `[${msg.createdAt.toISOString()}] ${msg.author.tag}: ${content || "(no content)"}${attachmentsSuffix}`,
+    );
+
+    entries.push({
+      id: msg.id,
+      authorId: msg.author.id,
+      authorTag: msg.author.tag,
+      authorDisplayName: msg.member?.displayName ?? msg.author.displayName ?? msg.author.username,
+      authorAvatarUrl: msg.author.displayAvatarURL({ size: 64 }),
+      content,
+      createdAt: msg.createdAt.toISOString(),
+      attachments: attachmentUrls,
+      isBot: msg.author.bot,
+    });
+  }
+
+  return { text: lines.join("\n"), entries };
 }
 
 export async function closeTicket(
@@ -245,11 +337,16 @@ export async function closeTicket(
     throw new Error("Ticket not found or already closed.");
   }
 
-  const transcript = await buildTranscript(channel);
+  const { text: transcript, entries } = await buildTranscript(channel);
   const fullTranscript = `${transcript}\n\n---\nClosed by ${closedByTag} at ${new Date().toISOString()}`;
 
-  await closeTicketRecord(ticket.id, fullTranscript);
+  await closeTicketRecord(ticket.id, fullTranscript, entries);
 
+    const logUrl = await submitTicketTranscript(ticket.id, entries, {
+    category: ticket.category,
+    openerDiscordId: ticket.openerDiscordId,
+    closedAt: new Date().toISOString(),
+  });
   const logChannel = await client.channels.fetch(env.ticketLogChannelId);
   if (logChannel?.isSendable()) {
     const logContainer = buildBrandedMessage(
@@ -270,7 +367,37 @@ export async function closeTicket(
         ),
       );
 
+    if (logUrl) {
+      logContainer.addActionRowComponents((row) =>
+        row.setComponents(linkButton("View full transcript", logUrl)),
+      );
+    }
+
     await sendBranded(logChannel, logContainer);
+  }
+
+  if (logUrl) {
+    try {
+      const opener = await client.users.fetch(ticket.openerDiscordId);
+      const dmContainer = buildBrandedMessage(
+        BRAND_SAND,
+        [
+          "## Your ticket was closed",
+          "",
+          `**Category** · ${ticket.category}`,
+          `Here's the full transcript of your conversation.`,
+        ].join("\n"),
+      ).addActionRowComponents((row) =>
+        row.setComponents(linkButton("View transcript", logUrl)),
+      );
+
+      await opener.send(brandedMessagePayload(dmContainer));
+    } catch (err) {
+      console.warn(
+        `Could not DM ticket opener ${ticket.openerDiscordId} about closed ticket ${ticket.id}:`,
+        err,
+      );
+    }
   }
 
   await channel.delete(`Ticket closed by ${closedByTag}`);

@@ -14,6 +14,7 @@ let lastAuthCheck = 0;
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 let cachedSystemPrompt: string | null = null;
 let cachedAssistantModel: string | null = null;
+let cachedInstanceId: string | null = null;
 
 function getApiUrl(path: string): string {
   return `${env.gatewayUrl.replace(/\/$/, "")}${path}`;
@@ -58,6 +59,10 @@ export function getEffectiveAssistantModel(): string {
   return cachedAssistantModel ?? env.assistantModel;
 }
 
+export function getInstanceId(): string | null {
+  return cachedInstanceId;
+}
+
 export async function validateBotInstance(): Promise<boolean> {
   if (!env.isRegistered()) {
     if (env.allowUnregistered) {
@@ -86,6 +91,7 @@ export async function validateBotInstance(): Promise<boolean> {
       lastAuthCheck = Date.now();
       cachedSystemPrompt = data.systemPrompt;
       cachedAssistantModel = data.assistantModel ?? null;
+      cachedInstanceId = data.instanceId ?? cachedInstanceId;
       console.log(
         `[instance-auth] Validated (${env.authMode()}): ${data.instanceName}`,
       );
@@ -152,6 +158,7 @@ async function sendHeartbeat(client: Client): Promise<void> {
       status: string;
       systemPrompt?: string | null;
       assistantModel?: string | null;
+      instanceId?: string;
       pendingChangelogs?: PendingChangelogBroadcast[];
     };
     if (data.status !== "active") {
@@ -167,6 +174,9 @@ async function sendHeartbeat(client: Client): Promise<void> {
       }
       if (data.assistantModel !== undefined) {
         cachedAssistantModel = data.assistantModel;
+      }
+      if (data.instanceId) {
+        cachedInstanceId = data.instanceId;
       }
       if (data.pendingChangelogs?.length) {
         void deliverPendingChangelogs(client, data.pendingChangelogs);
