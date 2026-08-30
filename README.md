@@ -22,7 +22,7 @@ docker compose up -d --build
 
 | Variable | Purpose |
 |----------|---------|
-| `CAEDRAL_API_KEY` | Registers the bot with Caedral; bills AI usage from your prepaid balance |
+| `CAEDRAL_API_KEY` | Registers the bot with Caedral; AI usage consumes included quota |
 | `CAEDRAL_ASSISTANT_MODEL` | Caedral chat model for tickets (default `caedral-base`) |
 | `DATABASE_URL` | Set automatically by compose to the bundled Postgres |
 
@@ -152,7 +152,7 @@ All owner commands reply ephemerally with *"You don't have permission to use thi
 | `/announce` | Post a branded announcement to `#announcements`. Options: `title`, `description`, optional `link`. |
 | `/changelog-publish` | Publish a changelog to `#updates` and POST to the site changelog API (when `CHANGELOG_API_SECRET` is set). Options: `title`, `body`, optional `version`. |
 | `/status` | Ephemeral live status: site, API gateway, and database (includes internal details). |
-| `/user-lookup <email>` | Ephemeral account lookup: prepaid balance, account status, admin flag. |
+| `/user-lookup <email>` | Ephemeral account lookup: plan, account status, admin flag. |
 | `/setup-tickets` | Posts the persistent **Open Ticket** panel in `#support`. Run once after setup. |
 
 ### Public (all members)
@@ -160,7 +160,7 @@ All owner commands reply ephemerally with *"You don't have permission to use thi
 | Command | Description |
 |---------|-------------|
 | `/docs` | Link to `{SITE_URL}/docs` with branded Components V2 layout. |
-| `/pricing` | Summary of prepaid API pricing with link to the pricing page. |
+| `/pricing` | Summary of plan and model pricing with link to the pricing page. |
 | `/status-public` | Public-facing operational status (website + API only, no database internals). |
 
 ## Ticket system
@@ -178,7 +178,7 @@ Ticket channels use `@caedral/knowledge` for local FAQ RAG + **Caedral API** cha
 
 - **Knowledge** — bundled FAQ auto-ingested into local Postgres on first boot (`KNOWLEDGE_BASE.md`)
 - **Model** — set `CAEDRAL_ASSISTANT_MODEL` in `.env`, or choose remotely in [Dashboard → Discord Bots](https://caedral.com/dashboard/bots)
-- **Billing** — same `CAEDRAL_API_KEY` as registration; debits prepaid balance
+- **Billing** — same `CAEDRAL_API_KEY` as registration; consumes included quota
 - **Initial reply** — sent automatically after ticket creation, tailored to the selected category
 - **Follow-ups** — bot responds to the ticket opener with conversation context (`assistant_history` in DB)
 - **Owner mute** — when `OWNER_DISCORD_ID` posts in the ticket, `assistant_muted` is set and the bot stops auto-replying

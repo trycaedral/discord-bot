@@ -26,7 +26,7 @@ function retrievalQueryVariants(query: string): string[] {
   }
   if (/bonus|top.?up|recarga|prepaid|pricing|billing/.test(q)) {
     variants.push(
-      "Caedral top-up bonus through 28 September 2026 tiered bonus credits prepaid balance Agency Pack +15%",
+      "Caedral plans Starter Pro Scale included quota on-demand billing refund",
     );
   }
   if (/vision/.test(q)) {

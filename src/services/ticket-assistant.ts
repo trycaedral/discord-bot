@@ -48,7 +48,7 @@ const AI_FAILURE_FALLBACK =
 
 const CATEGORY_RETRIEVAL_QUERIES: Record<TicketCategoryKey, string> = {
   bug_report: "Caedral API errors troubleshooting debugging status",
-  billing: "Caedral billing pricing subscription payment balance tokens",
+  billing: "Caedral billing pricing subscription plan quota on-demand tokens",
   general: "Caedral getting started models API documentation support",
   feature: "Caedral product features roadmap feedback requests",
 };
@@ -102,7 +102,8 @@ function isModelConfigurationError(content: string): boolean {
 
 function isInsufficientBalanceError(content: string): boolean {
   return (
-    content.includes("insufficient prepaid balance") ||
+    content.includes("quota_exceeded") ||
+    content.includes("included quota") ||
     content.includes("dashboard/billing")
   );
 }

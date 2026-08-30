@@ -37,7 +37,7 @@ Caedral was founded and is led by **Leonardo Turque**. Keep further detail profe
 | X (Twitter) | https://x.com/trycaedral |
 | Dashboard | https://caedral.com/dashboard |
 | API keys | https://caedral.com/dashboard/api-keys |
-| Billing / top-up | https://caedral.com/dashboard/billing |
+| Billing | https://caedral.com/dashboard/billing |
 | Support email | support@caedral.com |
 
 ---
@@ -48,32 +48,18 @@ All chat tiers use `POST /v1/chat/completions` on the Caedral API gateway.
 
 | Tier | Model ID | Input rate | Cached input | Output rate |
 |------|----------|------------|--------------|-------------|
-| Base | `caedral-base` | Free | Free | Free ($0.01 min balance) |
+| Base | `caedral-base` | Free | Free | Free (fair-use) |
 | Titan | `caedral-titan` | $2 / 1M | $0.20 / 1M | $6 / 1M |
 | Olympus | `caedral-olympus` | $5 / 1M | $0.50 / 1M | $15 / 1M |
 | Primordial | `caedral-primordial` | $10 / 1M | $1 / 1M | $30 / 1M |
 
-**Billing:** All API usage bills from **prepaid balance only**. No subscriptions or weekly pools.
+**Billing:** Monthly **Starter ($29), Pro ($99), Scale ($299)** plans with included hosted and production-model quota. Optional on-demand after quota. Exhausted quota without on-demand returns HTTP 402 (`quota_exceeded`).
 
-**Top-up bonus (through 28 September 2026):** Self-serve top-ups and auto-recharges earn bonus prepaid credits. You pay the listed amount; bonus is added to balance.
-
-| Add funds | Bonus credits |
-|----------:|--------------:|
-| $5–$19.99 | +10% |
-| $20–$49.99 | +15% |
-| $50–$99.99 | +20% |
-| $100–$199.99 | +25% |
-| $200–$499.99 | +30% |
-| $500–$999.99 | +35% |
-| $1,000–$2,499.99 | +40% |
-| $2,500–$4,999.99 | +50% |
-| $5,000+ | Contact sales (support@caedral.com) |
-
-Top up prepaid balance at https://caedral.com/dashboard/billing.
+Manage plans at https://caedral.com/dashboard/billing. Refunds: unused paid plans within 14 days, except where applicable law provides otherwise. See https://caedral.com/refund.
 
 **Cached input:** When prompt-cache hits are reported, cached prompt tokens are billed at the cached-input rate above.
 
-**Base (`caedral-base`):** Free — not charged per request. Requires minimum **$0.01** prepaid balance as an eligibility gate (balance is not consumed).
+**Base (`caedral-base`):** Free — not charged per request. Requires an active, non-suspended account. Fair-use rate limits apply.
 
 **Rate limits (API):** Base tier **60 RPM** per API key; paid API tiers **100 RPM** per API key.
 
@@ -83,16 +69,16 @@ List all model IDs: `GET /v1/models` (no auth required for catalog).
 
 ---
 
-## Specialized models — prepaid balance ONLY
+## Specialized models — plans and quota
 
-These products require an API key and bill from **prepaid API balance** (except the limited free RAG promo below).
+These products require an API key. Hosted embed/rerank use the Caedral pool (free promo through 28 Sep 2026). Vision and routed Voice use production-model quota on a paid plan.
 
 | Product | Model ID | Endpoint | Price |
 |---------|----------|----------|-------|
 | Caedral Vision | `caedral-vision` | `POST /v1/images/generations` | **$5 / 1M tokens** |
-| Caedral Embed | `caedral-embed` | `POST /v1/embeddings` | **Free until 28 Sep 2026** (130 RPM, $0.01 gate), then **$0.001 / 1M tokens** |
+| Caedral Embed | `caedral-embed` | `POST /v1/embeddings` | **Free until 28 Sep 2026** (130 RPM, active account), then **$0.001 / 1M tokens** |
 | Caedral Voice | `caedral-voice` | `POST /v1/audio/speech` | **$15 / 1M tokens** |
-| Caedral Rerank | `caedral-rerank` | `POST /v1/rerank` | **Free until 28 Sep 2026** (130 RPM, $0.01 gate), then **$0.0005 per search** |
+| Caedral Rerank | `caedral-rerank` | `POST /v1/rerank` | **Free until 28 Sep 2026** (130 RPM, active account), then **$0.0005 per search** |
 | Caedral Video | `caedral-video` | Chat-based video generation | **$0.235 / second** |
 | Caedral Transcript | `caedral-transcript` | Audio transcription | **$0.056 / hour** |
 
@@ -102,11 +88,11 @@ These products require an API key and bill from **prepaid API balance** (except 
 
 **Embed pricing after the promo is $0.001 per 1M tokens.**
 
-**Caedral Embed and Caedral Rerank run on Caedral's own inference infrastructure** — not through third-party model providers. Caedral operates embedding and reranking directly on its servers. Through **28 September 2026** they are free with a **130 RPM** limit per API key and a **$0.01** prepaid eligibility gate (not debited).
+**Caedral Embed and Caedral Rerank run on Caedral's own inference infrastructure** — not through third-party model providers. Through **28 September 2026** they are free with a **130 RPM** limit per API key for active accounts.
 
 **Voice pricing is $15 per 1M tokens (blended display rate).**
 
-See the top-up bonus table above for prepaid funding. Top up at https://caedral.com/dashboard/billing.
+See https://caedral.com/pricing for plans. Manage billing at https://caedral.com/dashboard/billing.
 
 **Status:** Live infrastructure + per-model uptime at https://caedral.com/status. Machine-readable: `GET https://api.caedral.com/v1/status/models` (no auth; derived from Caedral probes and execution logs).
 
@@ -124,7 +110,7 @@ See the top-up bonus table above for prepaid funding. Top up at https://caedral.
 | HTTP | Error type | Meaning |
 |------|------------|---------|
 | 401 | `invalid_api_key` | Missing, invalid, or revoked key |
-| 402 | `insufficient_balance` | Prepaid balance too low for this request |
+| 402 | `quota_exceeded` | Included quota exhausted (enable on-demand or upgrade) |
 | 400 | `invalid_request` | Malformed request or invalid model/parameters |
 | 429 | `rate_limit_exceeded` | Too many requests — backoff and retry |
 | 502 | `upstream_error` | Transient Caedral model service failure — retry |
@@ -175,7 +161,7 @@ Install into `~/.n8n/custom`: `npm install n8n-nodes-caedral`, then restart n8n.
 **Trigger:**
 - **CaedralTrigger** — polling triggers: balance below threshold, pool usage above percentage
 
-API calls from n8n bill from **prepaid API balance** (same as SDK/REST). `caedral-base` is free under fair use.
+API calls from n8n bill from **included quota** (same as SDK/REST). `caedral-base` is free under fair use.
 
 ---
 
@@ -211,10 +197,10 @@ Caedral built the AI assistants on Caedral properties (web chat, Discord ticket 
 - Confirm key was not revoked in the dashboard
 - Keys are shown only once at creation — generate a new key if lost
 
-### 402 insufficient_balance
-- Check prepaid balance at https://caedral.com/dashboard/billing
-- Specialized models (Vision, Embed, Voice, Rerank) always require prepaid balance
-- Paid API chat tiers (Titan, Olympus, Primordial) require prepaid balance — not the weekly chat pool
+### 402 quota_exceeded
+- Check plan and quota at https://caedral.com/dashboard/billing
+- Specialized models (Vision, routed Voice) require a paid plan
+- Paid API chat tiers (Titan, Olympus, Primordial) consume production-model quota
 
 ### 429 rate_limit_exceeded
 - Base: 60 RPM per key; paid tiers: 100 RPM per key

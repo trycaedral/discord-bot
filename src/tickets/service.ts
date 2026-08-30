@@ -38,7 +38,7 @@ import {
 
 const TICKET_CATEGORY_DESCRIPTIONS: Record<TicketCategoryKey, string> = {
   bug_report: "Report an API error, outage, or unexpected behavior.",
-  billing: "Questions about prepaid balance, top-ups, invoices, or account balance.",
+  billing: "Questions about plans, included quota, on-demand invoices, or refunds.",
   general: "Product questions, onboarding, or general guidance.",
   feature: "Suggest a capability or improvement.",
 };

@@ -72,9 +72,9 @@ export async function fetchCaedralChatModelIds(): Promise<string[]> {
 
 export function formatInsufficientBalanceMessage(): string {
   return [
-    "Your Caedral prepaid balance is insufficient for ticket AI right now.",
+    "Your Caedral included quota is exhausted for ticket AI right now.",
     "",
-    "Top up at https://caedral.com/dashboard/billing — embed, rerank, and chat for tickets bill from the same balance as your API key.",
+    "Enable on-demand or upgrade the plan at https://caedral.com/dashboard/billing.",
     "",
     "A human support agent will follow up shortly.",
   ].join("\n");
