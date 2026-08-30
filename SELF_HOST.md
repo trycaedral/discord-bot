@@ -100,9 +100,9 @@ Docker builds require this layout (`discord-bot/` + `knowledge/` at the repo roo
 
 | Symptom | Check |
 |---------|--------|
-| Bot won't start | `CAEDRAL_API_KEY` set? Valid? Balance > $0.01 for paid models |
+| Bot won't start | `CAEDRAL_API_KEY` set? Valid? Paid models need included quota or on-demand |
 | Not in dashboard | First heartbeat within 60s; same API key owner as logged-in user |
-| AI errors in tickets | `CAEDRAL_ASSISTANT_MODEL` valid; prepaid balance |
+| AI errors in tickets | `CAEDRAL_ASSISTANT_MODEL` valid; included quota / on-demand |
 | Container unhealthy | `docker logs` — Discord token, DB connection, registration |
 
 Support: support@caedral.com

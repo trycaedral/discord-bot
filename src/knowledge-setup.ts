@@ -30,8 +30,8 @@ export async function ensureKnowledgeBase(): Promise<void> {
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes("(402)") || /insufficient/i.test(message)) {
       console.error(
-        "[knowledge-setup] Ingest failed: insufficient Caedral balance for embeddings. " +
-          "Top up at https://caedral.com/dashboard/billing then run: npm run knowledge:ingest",
+        "[knowledge-setup] Ingest failed: Caedral quota exhausted for embeddings. " +
+          "Subscribe or enable on-demand at https://caedral.com/dashboard/billing then run: npm run knowledge:ingest",
       );
     } else {
       console.error(`[knowledge-setup] Ingest failed: ${message}`);

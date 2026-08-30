@@ -26,7 +26,7 @@ import { requireOwner } from "../utils/permissions.js";
 import { buildTicketPanelComponents } from "../tickets/service.js";
 
 const API_PRICING = [
-  { tier: "Base", rate: "Free ($0.01 min balance)" },
+  { tier: "Base", rate: "Free (active account, fair-use limits)" },
   { tier: "Titan", rate: "$2 in / $0.20 cached / $6 out per 1M tokens" },
   { tier: "Olympus", rate: "$5 in / $0.50 cached / $15 out per 1M tokens" },
   { tier: "Primordial", rate: "$10 in / $1 cached / $30 out per 1M tokens" },
@@ -234,8 +234,9 @@ async function handleUserLookup(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  // balance_cents column stores milli-cents (1 USD = 100_000).
-  const balance = (user.balanceCents / 100_000).toFixed(2);
+  const planLabel = user.planId
+    ? `${user.planId} (${user.planStatus ?? "unknown"})`
+    : "free";
   const container = buildBrandedMessage(
     BRAND_GRAPHITE,
     [
@@ -248,7 +249,7 @@ async function handleUserLookup(interaction: ChatInputCommandInteraction) {
       `**Account status** · ${user.accountStatus}`,
       `**Email verified** · ${user.emailVerified ? "Yes" : "No"}`,
       `**Admin** · ${user.isAdmin ? "Yes" : "No"}`,
-      `**Balance** · $${balance}`,
+      `**Plan** · ${planLabel}`,
       `**Created** · ${user.createdAt.toISOString()}`,
     ].join("\n"),
   );
@@ -307,7 +308,7 @@ async function handlePricing(interaction: ChatInputCommandInteraction) {
     [
       "## API Pricing",
       "",
-      "Prepaid balance only — no subscriptions.",
+      "Monthly plans with included quota. Optional on-demand after quota.",
       "",
       lines,
     ].join("\n"),

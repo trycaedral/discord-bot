@@ -32,15 +32,14 @@ export type UserLookupRow = {
   isAdmin: boolean;
   accountStatus: string;
   createdAt: Date;
-  /** Prepaid API balance in USD cents (source of truth post API-only pivot). */
-  balanceCents: number;
+  planId: string | null;
+  planStatus: string | null;
 };
 
 export async function lookupUserByEmail(
   email: string,
 ): Promise<UserLookupRow | null> {
-  // subscriptions table dropped in site/drizzle/0014_api_only_pivot.sql —
-  // billing is prepaid balance_cents on "user" only.
+  // Billing is subscriptions + included quota. Do not read unused balance_cents.
   const rows = await sql<UserLookupRow[]>`
     SELECT
       u.id,
@@ -50,8 +49,17 @@ export async function lookupUserByEmail(
       u.is_admin AS "isAdmin",
       u.account_status AS "accountStatus",
       u.created_at AS "createdAt",
-      u.balance_cents AS "balanceCents"
+      s.plan_id AS "planId",
+      s.status AS "planStatus"
     FROM "user" u
+    LEFT JOIN LATERAL (
+      SELECT plan_id, status
+      FROM subscriptions
+      WHERE user_id = u.id
+        AND status IN ('active', 'trialing', 'past_due')
+      ORDER BY created_at DESC
+      LIMIT 1
+    ) s ON true
     WHERE LOWER(u.email) = LOWER(${email})
     LIMIT 1
   `;
