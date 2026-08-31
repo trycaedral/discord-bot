@@ -81,6 +81,12 @@ export function getAssistantReplyModel(): string {
   ).trim();
 }
 
+/** Optional Notre product control for internal dogfooding. Default off. */
+export function getNotreMode(): "off" | "auto" {
+  const raw = (process.env.CAEDRAL_NOTRE_MODE ?? "off").trim().toLowerCase();
+  return raw === "auto" ? "auto" : "off";
+}
+
 export const KNOWLEDGE_CONFIG = {
   /** Caedral API model ID for knowledge-base embeddings. */
   embeddingModelId:

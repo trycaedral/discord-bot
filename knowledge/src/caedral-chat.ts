@@ -1,8 +1,9 @@
+import { CaedralAPIError } from "caedral";
 import {
-  caedralApiGet,
-  caedralApiPost,
-  hasValidCaedralApiCredential,
-} from "./caedral-api.js";
+  getCaedralClient,
+  notreRequestOptions,
+} from "./caedral-client.js";
+import { hasValidCaedralApiCredential } from "./caedral-api.js";
 import { getAssistantReplyModel } from "./config.js";
 
 export type ChatCompletionMessage = {
@@ -54,17 +55,12 @@ function isUnknownModelResponse(status: number, bodyText: string): boolean {
 
 export async function fetchCaedralChatModelIds(): Promise<string[]> {
   try {
-    const response = await caedralApiGet("/v1/models");
-    if (!response.ok) return [];
-
-    const json = (await response.json()) as {
-      data?: Array<{ id?: string; pricing_tier?: string }>;
-    };
-
-    return (json.data ?? [])
-      .filter((row) => row.pricing_tier !== "specialized")
-      .map((row) => row.id?.trim())
-      .filter((id): id is string => Boolean(id));
+    const client = getCaedralClient();
+    const response = await client.models.list();
+    return (response.data ?? [])
+      .filter((row: { pricing_tier?: string }) => row.pricing_tier !== "specialized")
+      .map((row: { id?: string }) => row.id?.trim())
+      .filter((id: string | undefined): id is string => Boolean(id));
   } catch {
     return [];
   }
@@ -105,39 +101,35 @@ export function formatInvalidModelMessage(
 }
 
 async function parseChatError(
-  response: Response,
+  err: unknown,
   requestedModel: string,
 ): Promise<CaedralChatError> {
-  const bodyText = await response.text().catch(() => "");
-  let message = bodyText.slice(0, 400);
-
-  try {
-    const json = JSON.parse(bodyText) as {
-      error?: { message?: string };
-    };
-    if (json.error?.message) {
-      message = json.error.message;
+  if (err instanceof CaedralAPIError) {
+    const apiErr = err;
+    const bodyText =
+      typeof apiErr.rawBody === "string"
+        ? apiErr.rawBody
+        : apiErr.message;
+    if (isUnknownModelResponse(apiErr.statusCode, bodyText)) {
+      const availableModels = await fetchCaedralChatModelIds();
+      return new CaedralChatError(
+        formatInvalidModelMessage(requestedModel, availableModels),
+        apiErr.statusCode,
+        availableModels,
+      );
     }
-  } catch {
-    // use raw body
-  }
-
-  if (isUnknownModelResponse(response.status, bodyText)) {
-    const availableModels = await fetchCaedralChatModelIds();
+    if (apiErr.statusCode === 402) {
+      return new CaedralChatError(formatInsufficientBalanceMessage(), 402);
+    }
     return new CaedralChatError(
-      formatInvalidModelMessage(requestedModel, availableModels),
-      response.status,
-      availableModels,
+      apiErr.message || `Caedral chat failed (${apiErr.statusCode})`,
+      apiErr.statusCode,
     );
   }
 
-  if (response.status === 402) {
-    return new CaedralChatError(formatInsufficientBalanceMessage(), 402);
-  }
-
   return new CaedralChatError(
-    message || `Caedral chat failed (${response.status})`,
-    response.status,
+    err instanceof Error ? err.message : "Network error",
+    503,
   );
 }
 
@@ -155,57 +147,39 @@ export async function caedralChatCompletionNonStream(input: {
   }
 
   const model = (input.model ?? getAssistantReplyModel()).trim();
-  const body: Record<string, unknown> = {
-    model,
-    messages: input.messages,
-    stream: false,
-    ...(input.maxTokens != null ? { max_tokens: input.maxTokens } : {}),
-    ...(input.temperature != null ? { temperature: input.temperature } : {}),
-  };
+  const client = getCaedralClient();
+  const notre = notreRequestOptions();
 
   let lastError: CaedralChatError | null = null;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const response = await caedralApiPost("/v1/chat/completions", body);
+      const completion = await client.chat.completions.create({
+        model,
+        messages: input.messages,
+        stream: false,
+        ...(input.maxTokens != null ? { max_tokens: input.maxTokens } : {}),
+        ...(input.temperature != null ? { temperature: input.temperature } : {}),
+        ...(notre ? { notre } : {}),
+      });
 
-      if (response.ok) {
-        const json = (await response.json()) as {
-          choices?: Array<{
-            finish_reason?: string;
-            message?: { content?: string | null };
-          }>;
-        };
-        const choice = json.choices?.[0];
-        return {
-          content: choice?.message?.content ?? null,
-          finishReason: choice?.finish_reason ?? null,
-        };
-      }
-
-      const chatError = await parseChatError(response, model);
+      const choice = completion.choices?.[0];
+      return {
+        content: choice?.message?.content ?? null,
+        finishReason: choice?.finish_reason ?? null,
+      };
+    } catch (error) {
+      const chatError = await parseChatError(error, model);
       if (isNoRetryStatus(chatError.status) || !isTransientStatus(chatError.status)) {
         throw chatError;
       }
-
       lastError = chatError;
       console.warn(
         `[knowledge/caedral-chat] transient ${chatError.status} (attempt ${attempt + 1}/${MAX_RETRIES + 1})`,
       );
-    } catch (error) {
-      if (error instanceof CaedralChatError) {
-        if (isNoRetryStatus(error.status)) throw error;
-        lastError = error;
-      } else {
-        lastError = new CaedralChatError(
-          error instanceof Error ? error.message : "Network error",
-          503,
-        );
+      if (attempt < MAX_RETRIES) {
+        await sleep(RETRY_DELAY_MS);
       }
-    }
-
-    if (attempt < MAX_RETRIES) {
-      await sleep(RETRY_DELAY_MS);
     }
   }
 

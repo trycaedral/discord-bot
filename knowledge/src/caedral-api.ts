@@ -1,3 +1,4 @@
+import { getCaedralClient } from "./caedral-client.js";
 import {
   getCaedralBotInstanceId,
   getCaedralInternalApiKey,
@@ -55,24 +56,14 @@ export type RerankResult = {
 export async function caedralEmbedTexts(texts: string[]): Promise<number[][]> {
   if (texts.length === 0) return [];
 
-  const response = await caedralApiPost("/v1/embeddings", {
-    model: KNOWLEDGE_CONFIG.embeddingModelId,
-    dimensions: KNOWLEDGE_CONFIG.embeddingDimensions,
+  const client = getCaedralClient();
+  const response = await client.embeddings.create({
+    model: "caedral-embed-e1-small-v1",
+    dimensions: 384,
     input: texts,
   });
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(
-      `Caedral embeddings failed (${response.status}): ${body.slice(0, 300)}`,
-    );
-  }
-
-  const json = (await response.json()) as {
-    data?: Array<{ embedding?: number[]; index?: number }>;
-  };
-
-  const rows = json.data ?? [];
+  const rows = response.data ?? [];
   if (rows.length !== texts.length) {
     throw new Error(
       `Expected ${texts.length} embeddings, received ${rows.length}`,
@@ -103,30 +94,25 @@ export async function caedralRerankDocuments(input: {
 }): Promise<RerankResult[]> {
   if (input.documents.length === 0) return [];
 
-  const response = await caedralApiPost("/v1/rerank", {
+  const client = getCaedralClient();
+  const response = await client.rerank.create({
     model: KNOWLEDGE_CONFIG.rerankModelId,
     query: input.query,
     documents: input.documents,
     ...(input.topN != null ? { top_n: input.topN } : {}),
   });
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(
-      `Caedral rerank failed (${response.status}): ${body.slice(0, 300)}`,
-    );
-  }
-
-  const json = (await response.json()) as {
-    results?: Array<{ index?: number; relevance_score?: number }>;
-  };
-
-  return (json.results ?? [])
-    .map((row) => ({
+  return (response.results ?? [])
+    .map((row: { index?: number; relevance_score?: number }) => ({
       index: row.index ?? 0,
       relevanceScore: row.relevance_score ?? 0,
     }))
-    .sort((a, b) => b.relevanceScore - a.relevanceScore);
+    .sort(
+      (
+        a: { relevanceScore: number },
+        b: { relevanceScore: number },
+      ) => b.relevanceScore - a.relevanceScore,
+    );
 }
 
 export function shouldUseCaedralApiForKnowledge(): boolean {
