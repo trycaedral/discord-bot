@@ -14,6 +14,7 @@
     "deploy-commands": "tsx src/deploy-commands.ts",
     "db:migrate": "tsx src/db/migrate.ts",
     "knowledge:ingest": "tsx scripts/ingest-knowledge.ts",
+    "test": "npx tsx --test tests/**/*.test.ts",
     "test:ticket-assistant": "tsx scripts/test-ticket-assistant.ts"
   },
   "dependencies": {

@@ -5,6 +5,7 @@ import {
   postChangelogToDiscord,
   type ChangelogDiscordPayload,
 } from "../services/changelog-discord.js";
+import { verifyInternalBearer } from "./internal-auth.js";
 
 async function readJsonBody(req: IncomingMessage): Promise<unknown> {
   const chunks: Buffer[] = [];
@@ -23,7 +24,7 @@ function sendJson(res: ServerResponse, status: number, body: unknown) {
 function isAuthorized(req: IncomingMessage): boolean {
   const header = req.headers.authorization ?? "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : "";
-  return Boolean(env.internalSecret) && token === env.internalSecret;
+  return verifyInternalBearer(token, env.internalSecret);
 }
 
 export function startInternalServer(client: Client) {
@@ -83,9 +84,7 @@ export function startInternalServer(client: Client) {
       sendJson(res, 404, { error: "Not found" });
     } catch (err) {
       console.error("Internal server error:", err);
-      sendJson(res, 500, {
-        error: err instanceof Error ? err.message : "Internal error",
-      });
+      sendJson(res, 500, { error: "Internal error" });
     }
   });
 
