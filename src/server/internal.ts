@@ -30,11 +30,21 @@ function isAuthorized(req: IncomingMessage): boolean {
 export function startInternalServer(client: Client) {
   const server = createServer(async (req, res) => {
     try {
-      if (req.method === "GET" && req.url === "/health") {
-        sendJson(res, 200, {
-          status: "ok",
-          registered: env.isRegistered(),
-        });
+      // HEAD /health must answer like GET (body suppressed) so wget --spider
+      // style healthchecks and LB probes don't get a 404.
+      if ((req.method === "GET" || req.method === "HEAD") && req.url === "/health") {
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "application/json");
+        if (req.method === "GET") {
+          res.end(
+            JSON.stringify({
+              status: "ok",
+              registered: env.isRegistered(),
+            }),
+          );
+        } else {
+          res.end();
+        }
         return;
       }
 
