@@ -7,6 +7,8 @@ WORKDIR /app
 
 COPY knowledge/package.json knowledge/tsconfig.json knowledge/tsconfig.build.json /app/knowledge/
 COPY knowledge/src /app/knowledge/src
+# knowledge/src/db.ts resolves ../migrations at runtime (KB setup at startup).
+COPY knowledge/migrations /app/knowledge/migrations
 WORKDIR /app/knowledge
 RUN npm install && npm run build
 
