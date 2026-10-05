@@ -63,6 +63,7 @@ function readBotVersion(): string {
 
 const caedralApiKey = optional("CAEDRAL_API_KEY");
 const instanceId = optional("CAEDRAL_BOT_INSTANCE_ID");
+const instanceSecret = optional("CAEDRAL_BOT_INSTANCE_SECRET");
 const allowUnregistered = optionalFlag("CAEDRAL_BOT_ALLOW_UNREGISTERED");
 
 const CAEDRAL_PLATFORM_GATEWAY = "https://api.caedral.com";
@@ -110,6 +111,8 @@ export const env = {
   caedralApiKey,
   /** Internal Caedral bot instance UUID — unlimited gateway access when provisioned. */
   instanceId,
+  /** HMAC secret for the instance credential — REQUIRED in production gateways. */
+  instanceSecret,
   systemPrompt: optional("CAEDRAL_BOT_SYSTEM_PROMPT"),
   clientId: botApplicationId(),
   guildId: required("DISCORD_GUILD_ID"),

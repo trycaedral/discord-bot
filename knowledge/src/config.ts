@@ -46,6 +46,16 @@ export function getCaedralBotInstanceId(): string {
   return (process.env.CAEDRAL_BOT_INSTANCE_ID ?? "").trim();
 }
 
+/**
+ * HMAC secret for the internal bot instance. Production gateways REQUIRE the
+ * x-bot-signature header for instance-id credentials (botHmacRequired is true
+ * whenever NODE_ENV=production) — without this secret every instance-auth
+ * call fails 401 by design.
+ */
+export function getCaedralBotInstanceSecret(): string {
+  return (process.env.CAEDRAL_BOT_INSTANCE_SECRET ?? "").trim();
+}
+
 export function getCaedralInternalApiUrl(): string {
   const instanceId = getCaedralBotInstanceId();
   const apiKey = getCaedralInternalApiKey();
