@@ -2,17 +2,12 @@
  * Simulates handleTicketAssistantMessage for owner-as-opener follow-ups.
  * Run: cd discord-bot && npx tsx scripts/simulate-owner-ticket-flow.ts
  */
-import { createRequire } from "node:module";
 import { randomUUID } from "node:crypto";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import postgres from "postgres";
 
-const require = createRequire(import.meta.url);
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const repoRoot = resolve(__dirname, "../..");
+import { loadScriptEnv } from "./script-env.js";
 
-require(resolve(repoRoot, "load-env.cjs")).loadRootEnv();
+loadScriptEnv();
 
 const ownerId = process.env.OWNER_DISCORD_ID!;
 const databaseUrl = process.env.DATABASE_URL!;
