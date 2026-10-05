@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { hostname } from "node:os";
 import type { Client } from "discord.js";
 import { env } from "../config/env.js";
@@ -25,10 +26,18 @@ function instanceAuthHeaders(): Record<string, string> {
     throw new Error("No Caedral bot credential configured");
   }
 
-  return {
+  const headers: Record<string, string> = {
     Authorization: `Bearer ${credential}`,
     "Content-Type": "application/json",
   };
+  // Production gateways require HMAC for instance-id credentials —
+  // signature = HMAC_SHA256(secret, instanceId), hex, "sha256="-prefixed.
+  if (env.instanceId && env.instanceSecret) {
+    headers["x-bot-signature"] = `sha256=${createHmac("sha256", env.instanceSecret)
+      .update(env.instanceId, "utf8")
+      .digest("hex")}`;
+  }
+  return headers;
 }
 
 function heartbeatPayload(client: Client): Record<string, unknown> {

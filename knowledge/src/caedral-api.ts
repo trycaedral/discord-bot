@@ -1,5 +1,7 @@
+import { createHmac } from "node:crypto";
 import {
   getCaedralBotInstanceId,
+  getCaedralBotInstanceSecret,
   getCaedralInternalApiKey,
   getCaedralInternalApiUrl,
   KNOWLEDGE_CONFIG,
@@ -7,11 +9,21 @@ import {
 
 export function caedralApiHeaders(): Record<string, string> {
   const instanceId = getCaedralBotInstanceId();
+  const instanceSecret = getCaedralBotInstanceSecret();
   const credential = instanceId || getCaedralInternalApiKey();
-  return {
+  const headers: Record<string, string> = {
     Authorization: `Bearer ${credential}`,
     "Content-Type": "application/json",
   };
+  // Production gateways require HMAC for instance-id credentials
+  // (gateway auth: extractBotSignature + verifyBotHmacSignature —
+  // signature = HMAC_SHA256(secret, instanceId), hex, "sha256="-prefixed).
+  if (instanceId && instanceSecret) {
+    headers["x-bot-signature"] = `sha256=${createHmac("sha256", instanceSecret)
+      .update(instanceId, "utf8")
+      .digest("hex")}`;
+  }
+  return headers;
 }
 
 export function hasValidCaedralApiCredential(): boolean {
