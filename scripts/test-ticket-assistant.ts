@@ -4,21 +4,13 @@
  * Usage:
  *   cd discord-bot && npm run test:ticket-assistant
  */
-import { createRequire } from "node:module";
 import { existsSync, readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import postgres from "postgres";
 
-const require = createRequire(import.meta.url);
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const botRoot = resolve(__dirname, "..");
-try {
-  require(resolve(botRoot, "load-env.cjs")).loadRootEnv();
-} catch {
-  require(resolve(botRoot, "../../load-env.cjs")).loadRootEnv();
-}
+import { loadScriptEnv } from "./script-env.js";
+
+loadScriptEnv();
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {

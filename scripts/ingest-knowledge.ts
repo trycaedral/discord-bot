@@ -4,17 +4,9 @@
  * Usage:
  *   cd discord-bot && npm run knowledge:ingest
  */
-import { createRequire } from "node:module";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { loadScriptEnv } from "./script-env.js";
 
-const require = createRequire(import.meta.url);
-const botRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-try {
-  require(resolve(botRoot, "load-env.cjs")).loadRootEnv();
-} catch {
-  require(resolve(botRoot, "../../load-env.cjs")).loadRootEnv();
-}
+loadScriptEnv();
 
 const { ingestKnowledgeBaseAndClose } = await import("@caedral/knowledge");
 
